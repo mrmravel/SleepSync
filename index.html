@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SleepySync - Your Personal Sleep Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --dreamy-bg: linear-gradient(135deg, #e0c3fc, #8ec5fc);
+      --dreamy-text: #2c3e50;
+    }
+
+    * {
+      box-sizing: border-box;
+      transition: all 0.4s ease;
+    }
+
+    body {
+      font-family: 'Comfortaa', sans-serif;
+      margin: 0;
+      display: flex;
+      flex-direction: row;
+      height: 100vh;
+      background: var(--dreamy-bg);
+      color: var(--dreamy-text);
+      overflow: hidden;
+      animation: breathing 15s infinite ease-in-out;
+    }
+
+    @keyframes breathing {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    .gui-container {
+      width: 35%;
+      padding: 40px 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      background: rgba(255, 255, 255, 0.2);
+      border-right: 2px solid #ccc;
+      backdrop-filter: blur(8px);
+      border-top-right-radius: 25px;
+      border-bottom-right-radius: 25px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .gui-container label {
+      margin-top: 12px;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .gui-container input, .gui-container button {
+      font-size: 14px;
+      padding: 10px;
+      margin: 6px 0;
+      border-radius: 10px;
+      border: 2px solid #c3a1ff;
+      width: 100%;
+    }
+
+    .gui-container button {
+      background-color: #c3a1ff;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .gui-container button:hover {
+      transform: scale(1.05);
+    }
+
+    .title {
+      font-size: 22px;
+      margin-bottom: 25px;
+      position: relative;
+      text-align: left;
+      animation: titleFloat 3s ease-in-out infinite;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      margin-bottom: 25px;
+      color: #444;
+    }
+
+    .title::after {
+      content: '✨';
+      position: absolute;
+      right: -25px;
+      animation: sparkle 2s infinite ease-in-out;
+    }
+
+    @keyframes sparkle {
+      0%, 100% { opacity: 1; top: 0; }
+      50% { opacity: 0; top: -10px; }
+    }
+
+    @keyframes titleFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    .graph-container {
+      width: 65%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+    }
+
+    #sleepChart {
+      max-height: 500px;
+      width: 100%;
+    }
+
+    .credit {
+      position: absolute;
+      bottom: 10px;
+      right: 20px;
+      font-size: 14px;
+      color: #2c3e50;
+      opacity: 0.7;
+    }
+
+    #sleepRec {
+      font-size: 14px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="gui-container">
+    <div class="title">SleepySync 🌙</div>
+    <div class="subtitle">Your Personal Sleep Tracker</div>
+
+    <label for="month">Month</label>
+    <input type="text" id="month" placeholder="e.g., April">
+
+    <label for="day">Day</label>
+    <input type="number" id="day" placeholder="e.g., 10">
+
+    <label for="year">Year</label>
+    <input type="number" id="year" placeholder="e.g., 2025">
+
+    <label for="sleepTime">Sleep Time</label>
+    <input type="time" id="sleepTime">
+
+    <label for="wakeTime">Wake Time</label>
+    <input type="time" id="wakeTime">
+
+    <button onclick="trackSleep()">Track Sleep</button>
+    <button onclick="resetData()">Reset</button>
+
+    <p id="sleepRec"></p>
+  </div>
+
+  <div class="graph-container">
+    <canvas id="sleepChart"></canvas>
+  </div>
+
+  <div class="credit">Programmed by Leoar P. Cajes Jr.</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    function calculateSleepDuration(start, end) {
+      const [startH, startM] = start.split(":").map(Number);
+      const [endH, endM] = end.split(":").map(Number);
+      let startTotal = startH * 60 + startM;
+      let endTotal = endH * 60 + endM;
+
+      if (endTotal < startTotal) endTotal += 1440; // cross midnight
+
+      const duration = (endTotal - startTotal) / 60;
+      return duration;
+    }
+
+    function trackSleep() {
+      const month = document.getElementById('month').value.trim();
+      const day = document.getElementById('day').value.trim();
+      const year = document.getElementById('year').value.trim();
+      const sleep = document.getElementById('sleepTime').value;
+      const wake = document.getElementById('wakeTime').value;
+
+      if (!month || !day || !year || !sleep || !wake) {
+        alert("⚠️ Please fill out all fields.");
+        return;
+      }
+
+      const duration = calculateSleepDuration(sleep, wake);
+      const formattedDate = `${month}\n${day}\n${year}`;
+
+      const sleepData = JSON.parse(localStorage.getItem("sleepData") || "[]");
+      sleepData.push({ date: formattedDate, hours: duration });
+      localStorage.setItem("sleepData", JSON.stringify(sleepData));
+
+      showRecommendation(duration);
+      updateChart();
+    }
+
+    function showRecommendation(hours) {
+      const rec = document.getElementById("sleepRec");
+      if (hours < 6) {
+        rec.textContent = "😴 Try to get more rest — aim for at least 7-8 hours.";
+      } else if (hours <= 8) {
+        rec.textContent = "🌟 Great sleep! You're on track.";
+      } else {
+        rec.textContent = "🛌 Oversleeping a bit? Try to balance it out.";
+      }
+    }
+
+    function resetData() {
+      localStorage.removeItem("sleepData");
+      updateChart();
+    }
+
+    function updateChart() {
+      const sleepData = JSON.parse(localStorage.getItem("sleepData") || "[]");
+      const ctx = document.getElementById("sleepChart").getContext("2d");
+
+      const labels = sleepData.map(e => e.date);
+      const data = sleepData.map(e => e.hours);
+
+      if (window.sleepChartInstance) window.sleepChartInstance.destroy();
+
+      window.sleepChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Sleep Hours",
+            data,
+            borderColor: "#8e44ad",
+            backgroundColor: "#dcd6f7",
+            tension: 0.4,
+            borderWidth: 3,
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: {
+              ticks: { color: '#2c3e50' },
+              grid: { color: '#aaa' }
+            },
+            y: {
+              min: 0,
+              max: 12,
+              title: { display: true, text: "Hours" },
+              ticks: { color: '#2c3e50' },
+              grid: { color: '#aaa' }
+            }
+          }
+        }
+      });
+    }
+
+    window.onload = updateChart;
+  </script>
+</body>
+</html>
